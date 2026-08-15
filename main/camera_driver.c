@@ -42,7 +42,7 @@ esp_err_t camera_start(void)
         .grab_mode = CAMERA_GRAB_LATEST,
     };
 
-    ESP_LOGI(TAG, "OV7670 V1.2 color-correction profile");
+    ESP_LOGI(TAG, "OV7670 V1.3 natural-color profile");
     ESP_LOGI(TAG, "XCLK=%d Hz RGB565 QVGA fb_count=%d grab=LATEST",
              CAM_XCLK_HZ, CAM_FB_COUNT);
 
@@ -57,39 +57,34 @@ esp_err_t camera_start(void)
         ESP_LOGI(TAG, "Camera PID=0x%02x VER=0x%02x MIDH=0x%02x MIDL=0x%02x",
                  sensor->id.PID, sensor->id.VER, sensor->id.MIDH, sensor->id.MIDL);
 
-        /* Keep automatic controls enabled and apply only mild image tuning. */
+        /* OV7670 in esp32-camera 2.1.7 only implements these image controls.
+           Brightness/contrast/saturation/sharpness/AWB-gain/WB-mode are dummy
+           functions for OV7670, so do not call them and pretend they changed
+           the image. Keep the three real automatic controls enabled. */
         if (sensor->set_whitebal)      sensor->set_whitebal(sensor, 1);
-        if (sensor->set_awb_gain)      sensor->set_awb_gain(sensor, 1);
         if (sensor->set_exposure_ctrl) sensor->set_exposure_ctrl(sensor, 1);
         if (sensor->set_gain_ctrl)     sensor->set_gain_ctrl(sensor, 1);
-        if (sensor->set_brightness)    sensor->set_brightness(sensor, 0);
-        if (sensor->set_contrast)      sensor->set_contrast(sensor, 1);
-        if (sensor->set_saturation)    sensor->set_saturation(sensor, -1);
     }
 
-    /*
-     * Critical OV7670 RGB565 fix:
-     * the framebuffer produced by this ESP32-S3/OV7670 combination is
-     * interpreted as little-endian RGB565 by the ESP32 camera path. The JPEG
-     * converter defaults to big-endian input, which produces a strong green
-     * cast and unrealistic colours. Match the converter to the actual buffer.
-     */
-    jpgSetRgb565BE(false);
-    ESP_LOGI(TAG, "RGB565 JPEG byte order: LITTLE-ENDIAN");
+    /* esp32-camera's JPEG encoder defaults to big-endian RGB565, and the
+       official documentation says this matches most camera frame buffers.
+       V1.2 forced little-endian and produced the psychedelic false colours
+       seen on the user's screen. Restore the correct/default interpretation. */
+    jpgSetRgb565BE(true);
+    ESP_LOGI(TAG, "RGB565 JPEG byte order: BIG-ENDIAN (driver default)");
 
-    /* CONFIG_CAMERA_PSRAM_DMA is already enabled in sdkconfig.defaults.
-       Do not call esp_camera_set_psram_mode(true) here because that function
-       reconfigures the whole camera a second time. */
+    /* CONFIG_CAMERA_PSRAM_DMA is enabled at build time. Do not call
+       esp_camera_set_psram_mode(true), because it reconfigures the camera. */
     ESP_LOGI(TAG, "PSRAM DMA configured at build time; no second camera init");
 
-    /* Let auto exposure / gain / white balance settle before streaming. */
-    for (int i = 0; i < 3; ++i) {
+    /* Give AWB/AEC/AGC several frames to settle before the web stream starts. */
+    for (int i = 0; i < 5; ++i) {
         camera_fb_t *fb = esp_camera_fb_get();
         if (fb) {
             esp_camera_fb_return(fb);
         }
     }
-    vTaskDelay(pdMS_TO_TICKS(120));
+    vTaskDelay(pdMS_TO_TICKS(150));
 
     return ESP_OK;
 }
