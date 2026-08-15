@@ -47,8 +47,9 @@ void vision_process(const camera_fb_t *fb)
     uint32_t idx = 0;
 
     /*
-     * Lấy 16x12 điểm mẫu. OV7670 phát byte cao trước byte thấp đối với RGB565.
-     * Việc lấy mẫu nhẹ giúp còn tài nguyên cho Wi-Fi và AI/robot về sau.
+     * V1.2: framebuffer RGB565 is handled as little-endian to match the
+     * JPEG converter setting in camera_driver.c. This also makes the R/G/B
+     * statistics represent the displayed image correctly.
      */
     for (uint32_t gy = 0; gy < GRID_H; ++gy) {
         uint32_t y = ((gy * 2 + 1) * fb->height) / (GRID_H * 2);
@@ -57,7 +58,7 @@ void vision_process(const camera_fb_t *fb)
             uint32_t x = ((gx * 2 + 1) * fb->width) / (GRID_W * 2);
             size_t off = ((size_t)y * fb->width + x) * 2;
 
-            uint16_t p = ((uint16_t)buf[off] << 8) | buf[off + 1];
+            uint16_t p = ((uint16_t)buf[off + 1] << 8) | buf[off];
 
             uint8_t r = expand5((p >> 11) & 0x1F);
             uint8_t g = expand6((p >> 5) & 0x3F);
