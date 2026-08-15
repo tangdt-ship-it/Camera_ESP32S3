@@ -46,11 +46,8 @@ void vision_process(const camera_fb_t *fb)
     uint32_t diff_sum = 0;
     uint32_t idx = 0;
 
-    /*
-     * V1.2: framebuffer RGB565 is handled as little-endian to match the
-     * JPEG converter setting in camera_driver.c. This also makes the R/G/B
-     * statistics represent the displayed image correctly.
-     */
+    /* OV7670/esp32-camera RGB565 framebuffer is interpreted MSB first.
+       Keep statistics consistent with frame2jpg() big-endian input. */
     for (uint32_t gy = 0; gy < GRID_H; ++gy) {
         uint32_t y = ((gy * 2 + 1) * fb->height) / (GRID_H * 2);
 
@@ -58,12 +55,11 @@ void vision_process(const camera_fb_t *fb)
             uint32_t x = ((gx * 2 + 1) * fb->width) / (GRID_W * 2);
             size_t off = ((size_t)y * fb->width + x) * 2;
 
-            uint16_t p = ((uint16_t)buf[off + 1] << 8) | buf[off];
+            uint16_t p = ((uint16_t)buf[off] << 8) | buf[off + 1];
 
             uint8_t r = expand5((p >> 11) & 0x1F);
             uint8_t g = expand6((p >> 5) & 0x3F);
             uint8_t b = expand5(p & 0x1F);
-
             uint8_t y8 = (uint8_t)((77u * r + 150u * g + 29u * b) >> 8);
 
             now_grid[idx] = y8;
