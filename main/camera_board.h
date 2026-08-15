@@ -2,13 +2,7 @@
 
 #include "esp_camera.h"
 
-/*
- * ESP32-S3 N16R8 <-> OV7670 (no FIFO)
- *
- * Chọn GPIO4..17 liên tục để dễ đi dây và tránh các chân đang thường dùng
- * cho USB/UART hoặc PSRAM/Flash trên nhiều board ESP32-S3.
- */
-
+/* ESP32-S3 N16R8 <-> OV7670 (no FIFO) */
 #define CAM_PIN_D0       4
 #define CAM_PIN_D1       5
 #define CAM_PIN_D2       6
@@ -22,24 +16,20 @@
 #define CAM_PIN_VSYNC   13
 #define CAM_PIN_HREF    14
 #define CAM_PIN_XCLK    15
-
 #define CAM_PIN_SIOD    16
 #define CAM_PIN_SIOC    17
 
-/* RESET nối 3V3, PWDN nối GND nên không cần GPIO điều khiển. */
 #define CAM_PIN_RESET   -1
 #define CAM_PIN_PWDN    -1
 
-/*
- * Datasheet OV7670 cho phép XCLK 10..48 MHz.
- * 10 MHz ưu tiên độ ổn định khi thử bằng dây Dupont.
- */
+/* Keep the known-good timing from the original working project. */
 #define CAM_XCLK_HZ     10000000
-
-/*
- * OV7670 không có JPEG encoder.
- * RGB565 thuận tiện cho xử lý ảnh trực tiếp.
- */
 #define CAM_PIXEL_FORMAT PIXFORMAT_RGB565
 #define CAM_FRAME_SIZE   FRAMESIZE_QVGA
-#define CAM_FB_COUNT     1
+
+/* Two frame buffers + GRAB_LATEST reduce visible latency on the web stream. */
+#define CAM_FB_COUNT     2
+
+/* Software JPEG settings. OV7670 has no hardware JPEG encoder. */
+#define CAM_STREAM_JPEG_QUALITY 55
+#define CAM_CAPTURE_JPEG_QUALITY 85
