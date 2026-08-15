@@ -24,11 +24,19 @@ void app_main(void)
     vision_init();
 
     ESP_LOGI(TAG, "======================================");
-    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 AI Vision");
+    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 V1.1");
+    ESP_LOGI(TAG, " Clear display + low latency profile");
     ESP_LOGI(TAG, "======================================");
 
-    ESP_ERROR_CHECK(camera_start());
+    /* Keep Wi-Fi alive for diagnostics even if camera init fails. */
     ESP_ERROR_CHECK(wifi_ap_start());
+
+    err = camera_start();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Camera init failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "Wi-Fi remains available at 192.168.4.1");
+    }
+
     ESP_ERROR_CHECK(web_server_start());
 
     ESP_LOGI(TAG, "READY");
