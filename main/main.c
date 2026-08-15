@@ -24,8 +24,8 @@ void app_main(void)
     vision_init();
 
     ESP_LOGI(TAG, "======================================");
-    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 V1.2");
-    ESP_LOGI(TAG, " RGB565 color correction profile");
+    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 V1.3");
+    ESP_LOGI(TAG, " Restore correct RGB565 + native OV7670 controls");
     ESP_LOGI(TAG, "======================================");
 
     ESP_ERROR_CHECK(wifi_ap_start());
