@@ -2,6 +2,8 @@
 #include "camera_board.h"
 
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "camera_driver";
 
@@ -36,11 +38,12 @@ esp_err_t camera_start(void)
         .jpeg_quality = 12,
         .fb_count = CAM_FB_COUNT,
         .fb_location = CAMERA_FB_IN_PSRAM,
-        .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
+        .grab_mode = CAMERA_GRAB_LATEST,
     };
 
-    ESP_LOGI(TAG, "Khoi tao OV7670...");
-    ESP_LOGI(TAG, "XCLK=%d Hz, RGB565, QVGA", CAM_XCLK_HZ);
+    ESP_LOGI(TAG, "OV7670 performance profile");
+    ESP_LOGI(TAG, "XCLK=%d Hz RGB565 QVGA fb_count=%d grab=LATEST",
+             CAM_XCLK_HZ, CAM_FB_COUNT);
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
@@ -53,19 +56,25 @@ esp_err_t camera_start(void)
         ESP_LOGI(TAG, "Camera PID=0x%02x VER=0x%02x MIDH=0x%02x MIDL=0x%02x",
                  sensor->id.PID, sensor->id.VER, sensor->id.MIDH, sensor->id.MIDL);
 
-        /* Các thiết lập này được driver map theo khả năng của sensor. */
-        if (sensor->set_brightness) sensor->set_brightness(sensor, 0);
-        if (sensor->set_contrast)   sensor->set_contrast(sensor, 0);
-        if (sensor->set_saturation) sensor->set_saturation(sensor, 0);
+        /* Keep the driver's known-good OV7670 timing. Only enable auto image controls. */
+        if (sensor->set_whitebal)      sensor->set_whitebal(sensor, 1);
+        if (sensor->set_exposure_ctrl) sensor->set_exposure_ctrl(sensor, 1);
+        if (sensor->set_gain_ctrl)     sensor->set_gain_ctrl(sensor, 1);
     }
 
-    /* ESP32-S3 hỗ trợ DMA thẳng tới PSRAM. */
-    err = esp_camera_set_psram_mode(true);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "PSRAM DMA enabled");
-    } else {
-        ESP_LOGW(TAG, "Khong bat duoc PSRAM DMA: %s", esp_err_to_name(err));
+    /* CONFIG_CAMERA_PSRAM_DMA is already enabled in sdkconfig.defaults.
+       Do not call esp_camera_set_psram_mode(true) here because that function
+       reconfigures the whole camera a second time. */
+    ESP_LOGI(TAG, "PSRAM DMA configured at build time; no second camera init");
+
+    /* Let auto exposure / gain / white balance settle before streaming. */
+    for (int i = 0; i < 2; ++i) {
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (fb) {
+            esp_camera_fb_return(fb);
+        }
     }
+    vTaskDelay(pdMS_TO_TICKS(80));
 
     return ESP_OK;
 }
