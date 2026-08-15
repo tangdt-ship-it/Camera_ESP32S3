@@ -24,11 +24,10 @@ void app_main(void)
     vision_init();
 
     ESP_LOGI(TAG, "======================================");
-    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 V1.1");
-    ESP_LOGI(TAG, " Clear display + low latency profile");
+    ESP_LOGI(TAG, " ESP32-S3 N16R8 + OV7670 V1.2");
+    ESP_LOGI(TAG, " RGB565 color correction profile");
     ESP_LOGI(TAG, "======================================");
 
-    /* Keep Wi-Fi alive for diagnostics even if camera init fails. */
     ESP_ERROR_CHECK(wifi_ap_start());
 
     err = camera_start();
